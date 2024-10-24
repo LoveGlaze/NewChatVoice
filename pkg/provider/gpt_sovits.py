@@ -5,12 +5,19 @@ import time
 from graiax import silkcoder
 from .base_provider import TTSInterface
 
+def json_to_url_payload(json_data):
+    params = [""]
+    for key, value in json_data.items():
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value)
+        params.append(f"{key}={value}")
+    return "&".join(params)
 
 class GPTSovits(TTSInterface):
     def __init__(self, service_url: str, temp_dir_path: str):
         self.service_url = service_url
         self.temp_dir_path = temp_dir_path
-        self.character_list = None
+        self.character_list = None   
 
     async def get_character_list(self, file_path: str = None):
         url = f"{self.service_url}/character_list"
@@ -38,23 +45,22 @@ class GPTSovits(TTSInterface):
         speed = kwargs.get('speed', 1.0)
         save_temp = kwargs.get('save_temp', True)
 
-        url = f"{self.service_url}/tts"
-        payload = json.dumps({
-            "character": character_name,
-            "emotion": emotion,
+        url = f"{self.service_url}"
+        payload = {
             "text": text,
-            "batch_size": batch_size,
-            "speed": speed,
-            "stream": "False",
-            "save_temp": save_temp,
-            "text_language": "多语种混合"
-        })
+            "ref_audio_path": "./参考音频/[Krira]光动嘴不如亲自做给你看.wav",
+            "prompt_text":"光动嘴不如亲自做给你看",
+            "batch_size":"15",
+            "text_lang": "zh",
+            "prompt_lang":"zh"
+        }
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0"
         }
+        url_data=json_to_url_payload(payload)
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, data=payload) as response:
+            async with session.get(url + "/?" + url_data) as response:
                 if response.status == 200:
                     file_name = f"{character_name}_{emotion}_{int(time.time())}.wav"
                     save_path = os.path.join(self.temp_dir_path, file_name)
